@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>支援記録管理システム（最終版）</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    * { 
+      box-sizing: border-box; 
+      -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+    }
+    
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'メイリオ', 'Meiryo', sans-serif;
+      padding: 10px; 
+      background: #f5f5f5;
+      margin: 0;
+      font-size: 16px;
+      -webkit-text-size-adjust: 100%;
+    }
+    
+    h1 { 
+      color: #2c5aa0; 
+      text-align: center; 
+      margin: 10px 0 20px 0;
+      font-size: 1.5em;
+    }
+    
+    .controls { 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 8px; 
+      margin-bottom: 15px;
+      justify-content: center;
+    }
+    
+    .btn { 
+      padding: 12px 20px; 
+      cursor: pointer; 
+      border: none; 
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      transition: all 0.2s;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      min-height: 48px;
+    }
+    .btn:active { 
+      transform: scale(0.95); 
+      opacity: 0.8;
+    }
+    .btn-add { background: #4CAF50; color: white; }
+    .btn-save { background: #FF9800; color: white; }
+    .btn-export { background: #2196F3; color: white; }
+    .btn-clear { background: #f44336; color: white; }
+    .btn-cancel { background: #9E9E9E; color: white; }
+    .btn-master { background: #9C27B0; color: white; }
+    .btn-sync { background: #00BCD4; color: white; }
+    .btn-remove { background: #f44336; color: white; font-size: 14px; padding: 8px 16px; min-height: 40px; }
+    .btn-voice { 
+      background: #FF5722; 
+      color: white;
+      position: relative;
+      min-width: 48px;
+      min-height: 48px;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    .btn-voice.recording {
+      background: #f44336;
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    
+    /* モーダル */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .modal-content {
+      background-color: #fefefe;
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 12px;
+      width: 95%;
+      max-width: 800px;
+      max-height: 85vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #2c5aa0;
+    }
+    
+    .modal-header h2 {
+      color: #2c5aa0;
+      margin: 0;
+      font-size: 1.3em;
+    }
+    
+    .close {
+      color: #aaa;
+      font-size: 32px;
+      font-weight: bold;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 10px;
+      min-width: 48px;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+    }
+    
+    .close:hover, .close:active {
+      color: #000;
+    }
+    
+    .master-section {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 8px;
+    }
+    
+    .master-section h3 {
+      color: #2c5aa0;
+      margin-top: 0;
+      font-size: 1.1em;
+    }
+    
+    .master-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    
+    .master-input-group input,
+    .master-input-group select {
+      padding: 14px;
+      font-size: 16px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      min-height: 48px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    
+    .master-input-group input:focus,
+    .master-input-group select:focus {
+      outline: none;
+      border-color: #2c5aa0;
+    }
+    
+    .master-input-group button {
+      min-height: 48px;
+    }
+    
+    .master-list {
+      margin-top: 15px;
+    }
+    
+    .master-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px;
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    
+    .master-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .master-item-name {
+      font-weight: bold;
+      color: #333;
+      word-break: break-word;
+      font-size: 16px;
+    }
+    
+    .master-item-service {
+      font-size: 14px;
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    .btn-delete {
+      padding: 10px 16px;
+      background: #f44336;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      min-width: 70px;
+      min-height: 44px;
+      margin-left: 10px;
+      flex-shrink: 0;
+      font-weight: bold;
+      touch-action: manipulation;
+    }
+    
+    .btn-delete:active {
+      background: #d32f2f;
+      transform: scale(0.95);
+    }
+    
+    /* 入力エリア */
+    .input-section {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .input-section h3 { 
+      margin: 0 0 15px 0; 
+      color: #2c5aa0; 
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 1.2em;
+    }
+    
+    .input-row {
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      border: 2px solid #e0e0e0;
+      position: relative;
+      margin-bottom: 15px;
+    }
+    
+    .input-row.active {
+      border: 2px solid #4CAF50;
+      background: #f1f8f4;
+    }
+    
+    /* 1段目：基本情報 */
+    .basic-info-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #ddd;
+    }
+    
+    /* 2段目：支援内容エリア */
+    .support-content-section {
+      background: #fff;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    
+    .support-content-row {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 15px;
+      padding: 14px;
+      background: #fafafa;
+      border-radius: 8px;
+      border: 2px solid #e0e0e0;
+      position: relative;
+    }
+    
+    .support-content-row:last-child {
+      margin-bottom: 0;
+    }
+    
+    .support-label {
+      font-weight: bold;
+      color: #2c5aa0;
+      margin-bottom: 10px;
+      font-size: 1.1em;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .support-number {
+      background: #2c5aa0;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.9em;
+      display: inline-block;
+    }
+    
+    .support-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+    
+    .input-field {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .input-field label {
+      font-size: 15px;
+      font-weight: bold;
+      color: #555;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .input-field label .required {
+      color: red;
+      font-size: 16px;
+    }
+    
+    .input-field input,
+    .input-field select,
+    .input-field textarea {
+      padding: 14px;
+      font-size: 16px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, 'メイリオ', sans-serif;
+      width: 100%;
+      min-height: 48px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    
+    .input-field input:focus,
+    .input-field select:focus,
+    .input-field textarea:focus {
+      outline: none;
+      border-color: #2c5aa0;
+    }
+    
+    .input-field select {
+      background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8"><path fill="%23333" d="M0 0l6 8 6-8z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 40px;
+    }
+    
+    .input-field textarea {
+      resize: vertical;
+      min-height: 100px;
+      line-height: 1.5;
+    }
+    
+    .input-field-time {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .input-field-time span {
+      text-align: center;
+      font-weight: bold;
+    }
+    
+    .row-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 15px;
+      flex-wrap: wrap;
+    }
+    
+    .row-actions button {
+      padding: 14px 24px;
+      font-size: 16px;
+      min-height: 48px;
+      flex: 1;
+      min-width: 120px;
+    }
+    
+    /* データ同期セクション */
+    .sync-section {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .sync-section h3 {
+      color: #2c5aa0;
+      margin-top: 0;
+      font-size: 1.1em;
+    }
+    
+    .sync-info {
+      padding: 12px;
+      background: #e3f2fd;
+      border-radius: 8px;
+      margin-top: 10px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    .sync-status {
+      padding: 10px;
+      background: #fff;
+      border-left: 4px solid #4CAF50;
+      margin-top: 10px;
+      font-size: 14px;
+      border-radius: 4px;
+    }
+    
+    .sync-status.error {
+      border-left-color: #f44336;
+      background: #ffebee;
+    }
+    
+    /* フィルタエリア */
+    .filter-box { 
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .filter-box h3 { 
+      margin-top: 0; 
+      color: #2c5aa0;
+      font-size: 1.1em;
+    }
+    .filter-row {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .filter-row input, .filter-row select { 
+      padding: 14px; 
+      font-size: 16px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      min-height: 48px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    
+    .filter-row select {
+      background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8"><path fill="%23333" d="M0 0l6 8 6-8z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 40px;
+    }
+    
+    /* テーブル */
+    .table-container {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      background: white;
+      min-width: 600px;
+    }
+    th, td { 
+      border: 1px solid #e0e0e0; 
+      padding: 12px 10px; 
+      text-align: left;
+      font-size: 14px;
+    }
+    th { 
+      background: #2c5aa0; 
+      color: white; 
+      font-weight: bold;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    tr:nth-child(even) { background: #f9f9f9; }
+    tr:hover { background: #e3f2fd; }
+    
+    .service-badge {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+      white-space: nowrap;
+    }
+    .badge-生活介護 { background: #4CAF50; }
+    .badge-就労継続A型 { background: #2196F3; }
+    .badge-就労継続B型 { background: #FF9800; }
+    .badge-入所支援 { background: #9C27B0; }
+    .badge-居宅介護 { background: #00BCD4; }
+    .badge-その他 { background: #607D8B; }
+    
+    /* 音声入力インジケーター */
+    .voice-indicator {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 40px;
+      border-radius: 20px;
+      z-index: 2000;
+      display: none;
+      text-align: center;
+      min-width: 280px;
+    }
+    
+    .voice-indicator.active {
+      display: block;
+    }
+    
+    .voice-wave {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      border: 4px solid #f44336;
+      border-radius: 50%;
+      animation: wave 1.5s infinite;
+    }
+    
+    @keyframes wave {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.5; }
+    }
+
+    /* PC用レイアウト */
+    @media screen and (min-width: 768px) {
+      body { padding: 20px; font-size: 14px; }
+      h1 { font-size: 2em; }
+      
+      .basic-info-row {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      
+      .support-content-row {
+        display: grid;
+        grid-template-columns: 2fr 2fr 1.5fr 3fr 2fr;
+        gap: 10px;
+      }
+      
+      .support-actions {
+        grid-column: 1 / -1;
+      }
+      
+      .master-input-group {
+        flex-direction: row;
+      }
+      
+      .filter-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      
+      .filter-row input, 
+      .filter-row select {
+        flex: 1;
+        min-width: 150px;
+      }
+      
+      .row-actions button {
+        flex: 0;
+        min-width: 140px;
+      }
+      
+      .btn {
+        font-size: 14px;
+        padding: 10px 20px;
+        min-height: 44px;
+      }
+      
+      .input-field input,
+      .input-field select,
+      .input-field textarea {
+        font-size: 14px;
+      }
+    }
+    
+    /* タブレット用 */
+    @media screen and (min-width: 600px) and (max-width: 767px) {
+      .basic-info-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .support-content-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      
+      .support-actions {
+        grid-column: 1 / -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>📋 支援記録管理システム</h1>
+
+  <div class="controls">
+    <button class="btn btn-master" onclick="openMasterModal()">⚙️ マスター</button>
+    <button class="btn btn-sync" onclick="openSyncModal()">☁️ 同期</button>
+    <button class="btn btn-export" onclick="exportExcel()">📤 Excel</button>
+    <button class="btn btn-clear" onclick="clearAll()">🗑️ 削除</button>
+  </div>
+
+  <!-- データ同期設定モーダル -->
+  <div id="syncModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>☁️ データ同期設定</h2>
+        <span class="close" onclick="closeSyncModal()">&times;</span>
+      </div>
+      
+      <div class="sync-section">
+        <h3>📱 複数端末でデータを共有</h3>
+        <div class="sync-info">
+          <strong>【共有方法】</strong><br>
+          1. Google Sheetsで新規スプレッドシート作成<br>
+          2. 「拡張機能」→「Apps Script」を開く<br>
+          3. 提供されたスクリプトをコピー＆ペースト<br>
+          4. デプロイしてウェブアプリURLを取得<br>
+          5. 下記にURLを入力して保存
+        </div>
+        
+        <div class="master-input-group">
+          <input type="text" id="sheetsApiUrl" placeholder="Google Apps Script ウェブアプリURL">
+          <button class="btn btn-save" onclick="saveSyncSettings()">💾 保存</button>
+        </div>
+        
+        <div class="master-input-group" style="margin-top: 20px;">
+          <button class="btn btn-sync" onclick="syncToCloud()">⬆️ アップロード</button>
+          <button class="btn btn-add" onclick="syncFromCloud()">⬇️ ダウンロード</button>
+        </div>
+        
+        <div id="syncStatus" class="sync-status" style="display: none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- マスター管理モーダル -->
+  <div id="masterModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>⚙️ マスター管理</h2>
+        <span class="close" onclick="closeMasterModal()">&times;</span>
+      </div>
+      
+      <!-- 利用者登録 -->
+      <div class="master-section">
+        <h3>👤 利用者登録</h3>
+        <div class="master-input-group">
+          <input type="text" id="newUserName" placeholder="利用者名を入力">
+          <select id="newUserService">
+            <option value="">サービス区分を選択</option>
+          </select>
+          <button class="btn btn-add" onclick="addUser()">追加</button>
+        </div>
+        <div id="userList" class="master-list"></div>
+      </div>
+      
+      <!-- サービス区分登録 -->
+      <div class="master-section">
+        <h3>📂 サービス区分登録</h3>
+        <div class="master-input-group">
+          <input type="text" id="newServiceName" placeholder="サービス区分名を入力">
+          <button class="btn btn-add" onclick="addService()">追加</button>
+        </div>
+        <div id="serviceList" class="master-list"></div>
+      </div>
+      
+      <!-- 記録者登録 -->
+      <div class="master-section">
+        <h3>✍️ 記録者登録</h3>
+        <div class="master-input-group">
+          <input type="text" id="newStaffName" placeholder="記録者名を入力">
+          <button class="btn btn-add" onclick="addStaff()">追加</button>
+        </div>
+        <div id="staffList" class="master-list"></div>
+      </div>
+      
+      <!-- 支援内容登録 -->
+      <div class="master-section">
+        <h3>📝 支援内容登録</h3>
+        <div class="master-input-group">
+          <input type="text" id="newSupportType" placeholder="支援内容を入力（例：レクリエーション）">
+          <button class="btn btn-add" onclick="addSupportType()">追加</button>
+        </div>
+        <div id="supportTypeList" class="master-list"></div>
+      </div>
+      
+      <!-- 様子・状態登録 -->
+      <div class="master-section">
+        <h3>😊 様子・状態登録</h3>
+        <div class="master-input-group">
+          <input type="text" id="newCondition" placeholder="様子・状態を入力（例：元気）">
+          <button class="btn btn-add" onclick="addCondition()">追加</button>
+        </div>
+        <div id="conditionList" class="master-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 音声入力インジケーター -->
+  <div id="voiceIndicator" class="voice-indicator">
+    <div class="voice-wave"></div>
+    <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">🎤 音声入力中...</div>
+    <div style="font-size: 16px;">話してください</div>
+    <button class="btn btn-cancel" onclick="stopVoiceInput()" style="margin-top: 20px;">停止</button>
+  </div>
+
+  <!-- 入力セクション -->
+  <div class="input-section">
+    <h3>
+      <span>✏️ 記録入力</span>
+      <button class="btn btn-add" onclick="addInputRow()">➕ 記録追加</button>
+    </h3>
+    <div id="inputContainer">
+      <!-- 入力行がここに追加されます -->
+    </div>
+  </div>
+
+  <!-- フィルタエリア -->
+  <div class="filter-box">
+    <h3>🔍 絞り込み検索</h3>
+    <div class="filter-row">
+      <input type="month" id="filterMonth" placeholder="月で絞り込み">
+      <select id="filterService">
+        <option value="">サービス区分（全て）</option>
+      </select>
+      <input type="text" id="filterUser" placeholder="利用者名で絞り込み">
+      <button class="btn btn-add" onclick="applyFilter()">🔍 検索</button>
+      <button class="btn btn-cancel" onclick="resetFilter()">♻ リセット</button>
+    </div>
+  </div>
+
+  <!-- データテーブル -->
+  <div class="table-container">
+    <h3 style="color: #2c5aa0; margin-top: 0;">📊 記録一覧</h3>
+    <table id="recordTable">
+      <thead>
+        <tr>
+          <th>記録日</th>
+          <th>サービス区分</th>
+          <th>利用者名</th>
+          <th>記録者名</th>
+          <th>支援内容</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+<script>
+  let records = [];
+  let filtered = [];
+  let rowIdCounter = 0;
+  let supportCounterMap = {}; // 各入力行の支援内容カウンター
+  
+  // マスターデータ
+  let masterUsers = [];
+  let masterServices = ["生活介護", "就労継続A型", "就労継続B型", "入所支援", "居宅介護", "その他"];
+  let masterStaff = [];
+  let masterSupportTypes = ["食事支援", "排泄支援", "入浴支援", "活動支援", "移動支援", "作業支援", "健康管理", "相談支援", "その他"];
+  let masterConditions = ["良好", "普通", "やや不調", "不調", "要観察"];
+  
+  // 音声認識
+  let recognition = null;
+  let currentVoiceInput = null;
+  
+  // 音声認識の初期化
+  function initSpeechRecognition() {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.lang = 'ja-JP';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        if (currentVoiceInput) {
+          currentVoiceInput.value = transcript;
+        }
+        hideVoiceIndicator();
+      };
+      
+      recognition.onerror = function(event) {
+        console.error('音声認識エラー:', event.error);
+        hideVoiceIndicator();
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          alert('音声認識エラー: ' + event.error + '\n\nChromeまたはSafariブラウザをお使いください。');
+        }
+      };
+      
+      recognition.onend = function() {
+        hideVoiceIndicator();
+      };
+    }
+  }
+  
+  // 音声入力開始
+  function startVoiceInput(inputElement) {
+    if (!recognition) {
+      alert('このブラウザは音声入力に対応していません。\n\nChrome、Safari、Edgeをご利用ください。');
+      return;
+    }
+    
+    currentVoiceInput = inputElement;
+    showVoiceIndicator();
+    
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error('音声認識開始エラー:', e);
+      hideVoiceIndicator();
+      setTimeout(() => {
+        try {
+          recognition.start();
+        } catch (e2) {
+          console.error('音声認識再開エラー:', e2);
+        }
+      }, 100);
+    }
+  }
+  
+  function stopVoiceInput() {
+    if (recognition) {
+      recognition.stop();
+    }
+    hideVoiceIndicator();
+  }
+  
+  function showVoiceIndicator() {
+    document.getElementById('voiceIndicator').classList.add('active');
+  }
+  
+  function hideVoiceIndicator() {
+    document.getElementById('voiceIndicator').classList.remove('active');
+  }
+  
+  // ローカルストレージから読み込み
+  function loadMasterData() {
+    const savedUsers = localStorage.getItem('masterUsers');
+    const savedServices = localStorage.getItem('masterServices');
+    const savedStaff = localStorage.getItem('masterStaff');
+    const savedSupportTypes = localStorage.getItem('masterSupportTypes');
+    const savedConditions = localStorage.getItem('masterConditions');
+    const savedRecords = localStorage.getItem('records');
+    
+    if (savedUsers) masterUsers = JSON.parse(savedUsers);
+    if (savedServices) masterServices = JSON.parse(savedServices);
+    if (savedStaff) masterStaff = JSON.parse(savedStaff);
+    if (savedSupportTypes) masterSupportTypes = JSON.parse(savedSupportTypes);
+    if (savedConditions) masterConditions = JSON.parse(savedConditions);
+    if (savedRecords) {
+      records = JSON.parse(savedRecords);
+      filtered = [...records];
+    }
+  }
+  
+  // ローカルストレージに保存
+  function saveMasterData() {
+    localStorage.setItem('masterUsers', JSON.stringify(masterUsers));
+    localStorage.setItem('masterServices', JSON.stringify(masterServices));
+    localStorage.setItem('masterStaff', JSON.stringify(masterStaff));
+    localStorage.setItem('masterSupportTypes', JSON.stringify(masterSupportTypes));
+    localStorage.setItem('masterConditions', JSON.stringify(masterConditions));
+  }
+  
+  function saveRecords() {
+    localStorage.setItem('records', JSON.stringify(records));
+  }
+  
+  // モーダル操作
+  function openMasterModal() {
+    document.getElementById('masterModal').style.display = 'block';
+    renderMasterLists();
+  }
+  
+  function closeMasterModal() {
+    document.getElementById('masterModal').style.display = 'none';
+    updateFilterOptions();
+  }
+  
+  function openSyncModal() {
+    document.getElementById('syncModal').style.display = 'block';
+    const savedUrl = localStorage.getItem('sheetsApiUrl');
+    if (savedUrl) {
+      document.getElementById('sheetsApiUrl').value = savedUrl;
+    }
+  }
+  
+  function closeSyncModal() {
+    document.getElementById('syncModal').style.display = 'none';
+  }
+  
+  // 同期設定保存
+  function saveSyncSettings() {
+    const url = document.getElementById('sheetsApiUrl').value.trim();
+    if (url) {
+      localStorage.setItem('sheetsApiUrl', url);
+      showSyncStatus('設定を保存しました', false);
+    } else {
+      alert('URLを入力してください');
+    }
+  }
+  
+  // クラウドへアップロード
+  async function syncToCloud() {
+    const apiUrl = localStorage.getItem('sheetsApiUrl');
+    if (!apiUrl) {
+      alert('先にGoogle Sheets APIのURLを設定してください');
+      return;
+    }
+    
+    showSyncStatus('アップロード中...', false);
+    
+    try {
+      const data = {
+        records: records,
+        masterUsers: masterUsers,
+        masterServices: masterServices,
+        masterStaff: masterStaff,
+        masterSupportTypes: masterSupportTypes,
+        masterConditions: masterConditions
+      };
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+      
+      showSyncStatus('✓ アップロード完了しました', false);
+    } catch (error) {
+      showSyncStatus('✗ アップロードエラー: ' + error.message, true);
+    }
+  }
+  
+  // クラウドからダウンロード
+  async function syncFromCloud() {
+    const apiUrl = localStorage.getItem('sheetsApiUrl');
+    if (!apiUrl) {
+      alert('先にGoogle Sheets APIのURLを設定してください');
+      return;
+    }
+    
+    showSyncStatus('ダウンロード中...', false);
+    
+    try {
+      const response = await fetch(apiUrl + '?action=get');
+      const data = await response.json();
+      
+      if (data.records) records = data.records;
+      if (data.masterUsers) masterUsers = data.masterUsers;
+      if (data.masterServices) masterServices = data.masterServices;
+      if (data.masterStaff) masterStaff = data.masterStaff;
+      if (data.masterSupportTypes) masterSupportTypes = data.masterSupportTypes;
+      if (data.masterConditions) masterConditions = data.masterConditions;
+      
+      saveMasterData();
+      saveRecords();
+      filtered = [...records];
+      renderTable();
+      updateFilterOptions();
+      
+      showSyncStatus('✓ ダウンロード完了しました', false);
+    } catch (error) {
+      showSyncStatus('✗ ダウンロードエラー: ' + error.message, true);
+    }
+  }
+  
+  function showSyncStatus(message, isError) {
+    const statusEl = document.getElementById('syncStatus');
+    statusEl.textContent = message;
+    statusEl.style.display = 'block';
+    if (isError) {
+      statusEl.classList.add('error');
+    } else {
+      statusEl.classList.remove('error');
+    }
+    
+    setTimeout(() => {
+      statusEl.style.display = 'none';
+    }, 5000);
+  }
+  
+  // 利用者追加
+  function addUser() {
+    const name = document.getElementById('newUserName').value.trim();
+    const service = document.getElementById('newUserService').value;
+    
+    if (!name) {
+      alert('利用者名を入力してください');
+      return;
+    }
+    if (!service) {
+      alert('サービス区分を選択してください');
+      return;
+    }
+    
+    if (masterUsers.some(u => u.name === name && u.service === service)) {
+      alert('この利用者は既に登録されています');
+      return;
+    }
+    
+    masterUsers.push({name, service});
+    saveMasterData();
+    renderMasterLists();
+    
+    document.getElementById('newUserName').value = '';
+    document.getElementById('newUserService').value = '';
+  }
+  
+  function deleteUser(index) {
+    if (confirm(`「${masterUsers[index].name}」を削除しますか？`)) {
+      masterUsers.splice(index, 1);
+      saveMasterData();
+      renderMasterLists();
+    }
+  }
+  
+  function addService() {
+    const name = document.getElementById('newServiceName').value.trim();
+    
+    if (!name) {
+      alert('サービス区分名を入力してください');
+      return;
+    }
+    
+    if (masterServices.includes(name)) {
+      alert('このサービス区分は既に登録されています');
+      return;
+    }
+    
+    masterServices.push(name);
+    saveMasterData();
+    renderMasterLists();
+    
+    document.getElementById('newServiceName').value = '';
+  }
+  
+  function deleteService(index) {
+    if (confirm(`「${masterServices[index]}」を削除しますか？`)) {
+      masterServices.splice(index, 1);
+      saveMasterData();
+      renderMasterLists();
+    }
+  }
+  
+  function addStaff() {
+    const name = document.getElementById('newStaffName').value.trim();
+    
+    if (!name) {
+      alert('記録者名を入力してください');
+      return;
+    }
+    
+    if (masterStaff.includes(name)) {
+      alert('この記録者は既に登録されています');
+      return;
+    }
+    
+    masterStaff.push(name);
+    saveMasterData();
+    renderMasterLists();
+    
+    document.getElementById('newStaffName').value = '';
+  }
+  
+  function deleteStaff(index) {
+    if (confirm(`「${masterStaff[index]}」を削除しますか？`)) {
+      masterStaff.splice(index, 1);
+      saveMasterData();
+      renderMasterLists();
+    }
+  }
+  
+  // 支援内容追加
+  function addSupportType() {
+    const name = document.getElementById('newSupportType').value.trim();
+    
+    if (!name) {
+      alert('支援内容を入力してください');
+      return;
+    }
+    
+    if (masterSupportTypes.includes(name)) {
+      alert('この支援内容は既に登録されています');
+      return;
+    }
+    
+    masterSupportTypes.push(name);
+    saveMasterData();
+    renderMasterLists();
+    
+    document.getElementById('newSupportType').value = '';
+  }
+  
+  function deleteSupportType(index) {
+    if (confirm(`「${masterSupportTypes[index]}」を削除しますか？`)) {
+      masterSupportTypes.splice(index, 1);
+      saveMasterData();
+      renderMasterLists();
+    }
+  }
+  
+  // 様子・状態追加
+  function addCondition() {
+    const name = document.getElementById('newCondition').value.trim();
+    
+    if (!name) {
+      alert('様子・状態を入力してください');
+      return;
+    }
+    
+    if (masterConditions.includes(name)) {
+      alert('この様子・状態は既に登録されています');
+      return;
+    }
+    
+    masterConditions.push(name);
+    saveMasterData();
+    renderMasterLists();
+    
+    document.getElementById('newCondition').value = '';
+  }
+  
+  function deleteCondition(index) {
+    if (confirm(`「${masterConditions[index]}」を削除しますか？`)) {
+      masterConditions.splice(index, 1);
+      saveMasterData();
+      renderMasterLists();
+    }
+  }
+  
+  function renderMasterLists() {
+    // サービス区分選択肢を更新
+    const newUserServiceEl = document.getElementById('newUserService');
+    newUserServiceEl.innerHTML = '<option value="">サービス区分を選択</option>';
+    masterServices.forEach(service => {
+      const option = document.createElement('option');
+      option.value = service;
+      option.textContent = service;
+      newUserServiceEl.appendChild(option);
+    });
+    
+    // 利用者リスト
+    const userListEl = document.getElementById('userList');
+    userListEl.innerHTML = '';
+    masterUsers.forEach((user, index) => {
+      const item = document.createElement('div');
+      item.className = 'master-item';
+      item.innerHTML = `
+        <div class="master-item-info">
+          <div class="master-item-name">${user.name}</div>
+          <div class="master-item-service">
+            <span class="service-badge badge-${user.service}">${user.service}</span>
+          </div>
+        </div>
+        <button class="btn-delete" onclick="deleteUser(${index})">削除</button>
+      `;
+      userListEl.appendChild(item);
+    });
+    
+    // サービス区分リスト
+    const serviceListEl = document.getElementById('serviceList');
+    serviceListEl.innerHTML = '';
+    masterServices.forEach((service, index) => {
+      const item = document.createElement('div');
+      item.className = 'master-item';
+      item.innerHTML = `
+        <div class="master-item-info">
+          <div class="master-item-name">
+            <span class="service-badge badge-${service}">${service}</span>
+          </div>
+        </div>
+        <button class="btn-delete" onclick="deleteService(${index})">削除</button>
+      `;
+      serviceListEl.appendChild(item);
+    });
+    
+    // 記録者リスト
+    const staffListEl = document.getElementById('staffList');
+    staffListEl.innerHTML = '';
+    masterStaff.forEach((staff, index) => {
+      const item = document.createElement('div');
+      item.className = 'master-item';
+      item.innerHTML = `
+        <div class="master-item-info">
+          <div class="master-item-name">${staff}</div>
+        </div>
+        <button class="btn-delete" onclick="deleteStaff(${index})">削除</button>
+      `;
+      staffListEl.appendChild(item);
+    });
+    
+    // 支援内容リスト
+    const supportTypeListEl = document.getElementById('supportTypeList');
+    supportTypeListEl.innerHTML = '';
+    masterSupportTypes.forEach((type, index) => {
+      const item = document.createElement('div');
+      item.className = 'master-item';
+      item.innerHTML = `
+        <div class="master-item-info">
+          <div class="master-item-name">${type}</div>
+        </div>
+        <button class="btn-delete" onclick="deleteSupportType(${index})">削除</button>
+      `;
+      supportTypeListEl.appendChild(item);
+    });
+    
+    // 様子・状態リスト
+    const conditionListEl = document.getElementById('conditionList');
+    conditionListEl.innerHTML = '';
+    masterConditions.forEach((condition, index) => {
+      const item = document.createElement('div');
+      item.className = 'master-item';
+      item.innerHTML = `
+        <div class="master-item-info">
+          <div class="master-item-name">${condition}</div>
+        </div>
+        <button class="btn-delete" onclick="deleteCondition(${index})">削除</button>
+      `;
+      conditionListEl.appendChild(item);
+    });
+  }
+  
+  function updateUserOptions(selectElement, serviceValue) {
+    const row = selectElement.closest('.basic-info-row');
+    if (!row) return;
+    
+    const userSelect = row.querySelector('.row-user');
+    if (!userSelect) return;
+    
+    userSelect.innerHTML = '<option value="">利用者を選択</option>';
+    
+    if (serviceValue) {
+      const filteredUsers = masterUsers.filter(u => u.service === serviceValue);
+      filteredUsers.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.name;
+        option.textContent = user.name;
+        userSelect.appendChild(option);
+      });
+    }
+  }
+  
+  // 支援内容を作成
+  function createSupportContent(rowId, supportIndex) {
+    // 支援内容の選択肢
+    let typeOptions = '<option value="">選択</option>';
+    masterSupportTypes.forEach(type => {
+      typeOptions += `<option value="${type}">${type}</option>`;
+    });
+    
+    // 様子・状態の選択肢
+    let condOptions = '<option value="">選択</option>';
+    masterConditions.forEach(cond => {
+      condOptions += `<option value="${cond}">${cond}</option>`;
+    });
+    
+    const supportDiv = document.createElement('div');
+    supportDiv.className = 'support-content-row';
+    supportDiv.id = `support-${rowId}-${supportIndex}`;
+    
+    supportDiv.innerHTML = `
+      <div class="input-field">
+        <label>
+          <span class="support-number">支援${supportIndex}</span>
+          支援内容 ${supportIndex === 1 ? '<span class="required">*</span>' : ''}
+        </label>
+        <select class="row-type-${supportIndex}" ${supportIndex === 1 ? 'required' : ''}>
+          ${typeOptions}
+        </select>
+      </div>
+      
+      <div class="input-field">
+        <label>支援時間</label>
+        <div class="input-field-time">
+          <input type="time" class="row-start-time-${supportIndex}">
+          <span>〜</span>
+          <input type="time" class="row-end-time-${supportIndex}">
+        </div>
+      </div>
+      
+      <div class="input-field">
+        <label>様子・状態</label>
+        <select class="row-cond-${supportIndex}">
+          ${condOptions}
+        </select>
+      </div>
+      
+      <div class="input-field">
+        <label>
+          支援の詳細
+          <button type="button" class="btn-voice" onclick="startVoiceInput(this.closest('.input-field').querySelector('textarea'))" title="音声入力">🎤</button>
+        </label>
+        <textarea class="row-detail-${supportIndex}" placeholder="具体的な内容"></textarea>
+      </div>
+      
+      <div class="input-field">
+        <label>
+          特記事項
+          <button type="button" class="btn-voice" onclick="startVoiceInput(this.closest('.input-field').querySelector('textarea'))" title="音声入力">🎤</button>
+        </label>
+        <textarea class="row-note-${supportIndex}" placeholder="特記事項"></textarea>
+      </div>
+      
+      ${supportIndex > 1 ? `
+      <div class="support-actions">
+        <button type="button" class="btn btn-remove" onclick="removeSupportContent(${rowId}, ${supportIndex})">✕ この支援内容を削除</button>
+      </div>
+      ` : ''}
+    `;
+    
+    return supportDiv;
+  }
+  
+  // 支援内容を追加
+  function addSupportContent(rowId) {
+    const row = document.getElementById(`input-row-${rowId}`);
+    if (!row) return;
+    
+    const supportSection = row.querySelector('.support-content-section');
+    if (!supportSection) return;
+    
+    // 現在の支援内容数を取得
+    const currentCount = supportCounterMap[rowId] || 1;
+    const newIndex = currentCount + 1;
+    
+    // 新しい支援内容を作成
+    const newSupport = createSupportContent(rowId, newIndex);
+    
+    // 追加ボタンの前に挿入
+    const addButton = supportSection.querySelector('.support-add-button');
+    supportSection.insertBefore(newSupport, addButton);
+    
+    // カウンターを更新
+    supportCounterMap[rowId] = newIndex;
+    
+    // 新しい支援内容にスクロール
+    setTimeout(() => {
+      newSupport.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }
+  
+  // 支援内容を削除
+  function removeSupportContent(rowId, supportIndex) {
+    if (!confirm('この支援内容を削除しますか？')) {
+      return;
+    }
+    
+    const supportDiv = document.getElementById(`support-${rowId}-${supportIndex}`);
+    if (supportDiv) {
+      supportDiv.remove();
+    }
+  }
+  
+  function createInputRow() {
+    const rowId = ++rowIdCounter;
+    const today = new Date().toISOString().split('T')[0];
+    
+    // 初期支援内容数を1に設定
+    supportCounterMap[rowId] = 1;
+    
+    const row = document.createElement('div');
+    row.className = 'input-row';
+    row.id = `input-row-${rowId}`;
+    
+    let serviceOptions = '<option value="">選択</option>';
+    masterServices.forEach(service => {
+      serviceOptions += `<option value="${service}">${service}</option>`;
+    });
+    
+    let staffOptions = '<option value="">選択</option>';
+    masterStaff.forEach(staff => {
+      staffOptions += `<option value="${staff}">${staff}</option>`;
+    });
+    
+    row.innerHTML = `
+      <div class="basic-info-row">
+        <div class="input-field">
+          <label>記録日 <span class="required">*</span></label>
+          <input type="date" class="row-date" value="${today}" required>
+        </div>
+        
+        <div class="input-field">
+          <label>サービス区分 <span class="required">*</span></label>
+          <select class="row-service" required onchange="updateUserOptions(this, this.value)">
+            ${serviceOptions}
+          </select>
+        </div>
+        
+        <div class="input-field">
+          <label>利用者名 <span class="required">*</span></label>
+          <select class="row-user" required>
+            <option value="">利用者を選択</option>
+          </select>
+        </div>
+        
+        <div class="input-field">
+          <label>記録者名 <span class="required">*</span></label>
+          <select class="row-staff" required>
+            ${staffOptions}
+          </select>
+        </div>
+      </div>
+      
+      <div class="support-content-section">
+        <div class="support-label">
+          <span>📝 支援内容（必要なだけ追加できます）</span>
+          <button type="button" class="btn btn-add" onclick="addSupportContent(${rowId})">➕ 支援内容追加</button>
+        </div>
+        <div class="support-add-button"></div>
+      </div>
+      
+      <div class="row-actions">
+        <button type="button" class="btn btn-save" onclick="saveRow(${rowId})">✓ 保存</button>
+        <button type="button" class="btn btn-cancel" onclick="removeRow(${rowId})">✕ キャンセル</button>
+      </div>
+    `;
+    
+    // 最初の支援内容を追加
+    const supportSection = row.querySelector('.support-content-section');
+    const firstSupport = createSupportContent(rowId, 1);
+    const addButton = supportSection.querySelector('.support-add-button');
+    supportSection.insertBefore(firstSupport, addButton);
+    
+    return row;
+  }
+
+  function addInputRow() {
+    const container = document.getElementById('inputContainer');
+    const newRow = createInputRow();
+    container.appendChild(newRow);
+    newRow.classList.add('active');
+    
+    setTimeout(() => {
+      newRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const firstInput = newRow.querySelector('.row-date');
+      if (firstInput) firstInput.focus();
+    }, 100);
+  }
+
+  function removeRow(rowId) {
+    const row = document.getElementById(`input-row-${rowId}`);
+    if (row) {
+      row.remove();
+      delete supportCounterMap[rowId];
+    }
+  }
+
+  function saveRow(rowId) {
+    const row = document.getElementById(`input-row-${rowId}`);
+    if (!row) return;
+    
+    const date = row.querySelector('.row-date').value;
+    const service = row.querySelector('.row-service').value;
+    const user = row.querySelector('.row-user').value;
+    const staff = row.querySelector('.row-staff').value;
+    
+    if (!date || !service || !user || !staff) {
+      alert('必須項目（記録日、サービス区分、利用者名、記録者名）をすべて入力してください');
+      return;
+    }
+    
+    const type1 = row.querySelector('.row-type-1').value;
+    if (!type1) {
+      alert('支援内容1は必須です');
+      return;
+    }
+    
+    // すべての支援内容を収集
+    const supportContents = [];
+    const maxSupport = supportCounterMap[rowId] || 1;
+    
+    for (let i = 1; i <= maxSupport; i++) {
+      const typeEl = row.querySelector(`.row-type-${i}`);
+      if (!typeEl) continue; // 削除された支援内容はスキップ
+      
+      const type = typeEl.value;
+      if (type) {
+        const startTime = row.querySelector(`.row-start-time-${i}`)?.value || '';
+        const endTime = row.querySelector(`.row-end-time-${i}`)?.value || '';
+        const cond = row.querySelector(`.row-cond-${i}`)?.value || '';
+        const detail = row.querySelector(`.row-detail-${i}`)?.value.trim() || '';
+        const note = row.querySelector(`.row-note-${i}`)?.value.trim() || '';
+        
+        let timeRange = '';
+        if (startTime && endTime) {
+          timeRange = `${startTime}〜${endTime}`;
+        } else if (startTime) {
+          timeRange = `${startTime}〜`;
+        } else if (endTime) {
+          timeRange = `〜${endTime}`;
+        }
+        
+        supportContents.push({
+          type,
+          timeRange,
+          cond,
+          detail,
+          note
+        });
+      }
+    }
+    
+    if (supportContents.length === 0) {
+      alert('少なくとも1つの支援内容を入力してください');
+      return;
+    }
+    
+    const record = { 
+      date, 
+      service, 
+      user, 
+      staff,
+      supportContents 
+    };
+    
+    records.push(record);
+    saveRecords();
+    
+    filtered = [...records];
+    renderTable();
+    removeRow(rowId);
+    
+    alert(`✓ 記録を保存しました！（支援内容: ${supportContents.length}件）`);
+  }
+
+  function renderTable() {
+    const tbody = document.querySelector('#recordTable tbody');
+    tbody.innerHTML = '';
+    
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #999;">記録がありません</td></tr>';
+      return;
+    }
+    
+    const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
+    
+    sorted.forEach(r => {
+      const tr = document.createElement('tr');
+      
+      // 支援内容を結合して表示
+      let supportContent = '';
+      r.supportContents.forEach((s, idx) => {
+        if (idx > 0) supportContent += '<hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">';
+        supportContent += `
+          <div style="margin-bottom: 5px;">
+            <strong>【${idx + 1}】${s.type}</strong><br>
+            ${s.timeRange ? `⏰ ${s.timeRange}<br>` : ''}
+            ${s.cond ? `😊 ${s.cond}<br>` : ''}
+            ${s.detail ? `📄 ${s.detail}<br>` : ''}
+            ${s.note ? `📌 ${s.note}` : ''}
+          </div>
+        `;
+      });
+      
+      tr.innerHTML = `
+        <td>${r.date}</td>
+        <td><span class="service-badge badge-${r.service}">${r.service}</span></td>
+        <td>${r.user}</td>
+        <td>${r.staff}</td>
+        <td style="min-width: 300px;">${supportContent}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function updateFilterOptions() {
+    const filterServiceEl = document.getElementById('filterService');
+    filterServiceEl.innerHTML = '<option value="">サービス区分（全て）</option>';
+    masterServices.forEach(service => {
+      const option = document.createElement('option');
+      option.value = service;
+      option.textContent = service;
+      filterServiceEl.appendChild(option);
+    });
+  }
+
+  function applyFilter() {
+    const fMonth = document.getElementById('filterMonth').value;
+    const fService = document.getElementById('filterService').value;
+    const fUser = document.getElementById('filterUser').value.trim();
+
+    filtered = records.filter(r => {
+      let ok = true;
+      if (fMonth) ok = ok && r.date.startsWith(fMonth);
+      if (fService) ok = ok && r.service === fService;
+      if (fUser) ok = ok && r.user.includes(fUser);
+      return ok;
+    });
+
+    renderTable();
+  }
+
+  function resetFilter() {
+    filtered = [...records];
+    document.getElementById('filterMonth').value = '';
+    document.getElementById('filterService').value = '';
+    document.getElementById('filterUser').value = '';
+    renderTable();
+  }
+
+  function exportExcel() {
+    if (records.length === 0) {
+      alert('出力するデータがありません');
+      return;
+    }
+
+    const wb = XLSX.utils.book_new();
+
+    const wsData = [
+      ['記録日','サービス区分','利用者名','記録者名','支援番号','支援内容','支援時間','様子','詳細','特記事項']
+    ];
+    
+    records.forEach(r => {
+      r.supportContents.forEach((s, idx) => {
+        wsData.push([
+          r.date, 
+          r.service, 
+          r.user, 
+          r.staff,
+          idx + 1,
+          s.type,
+          s.timeRange || '',
+          s.cond || '',
+          s.detail || '',
+          s.note || ''
+        ]);
+      });
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, '日別記録一覧');
+
+    const monthly = {};
+    records.forEach(r => {
+      const month = r.date.slice(0,7);
+      if (!monthly[month]) monthly[month] = 0;
+      monthly[month] += r.supportContents.length;
+    });
+    const monthSheetData = [['月','件数'], ...Object.entries(monthly).sort()];
+    const wsMonth = XLSX.utils.aoa_to_sheet(monthSheetData);
+    XLSX.utils.book_append_sheet(wb, wsMonth, '月集計');
+
+    const serviceCount = {};
+    records.forEach(r => {
+      if (!serviceCount[r.service]) serviceCount[r.service] = 0;
+      serviceCount[r.service] += r.supportContents.length;
+    });
+    const serviceSheetData = [['サービス区分','件数'], ...Object.entries(serviceCount).sort()];
+    const wsService = XLSX.utils.aoa_to_sheet(serviceSheetData);
+    XLSX.utils.book_append_sheet(wb, wsService, 'サービス区分別集計');
+
+    const typeCount = {};
+    records.forEach(r => {
+      r.supportContents.forEach(s => {
+        if (!typeCount[s.type]) typeCount[s.type] = 0;
+        typeCount[s.type]++;
+      });
+    });
+    const typeSheetData = [['支援内容','件数'], ...Object.entries(typeCount).sort((a, b) => b[1] - a[1])];
+    const wsType = XLSX.utils.aoa_to_sheet(typeSheetData);
+    XLSX.utils.book_append_sheet(wb, wsType, '支援内容別集計');
+
+    const masterData = [
+      ['利用者名', 'サービス区分'],
+      ...masterUsers.map(u => [u.name, u.service]),
+      [],
+      ['記録者名'],
+      ...masterStaff.map(s => [s]),
+      [],
+      ['支援内容'],
+      ...masterSupportTypes.map(t => [t]),
+      [],
+      ['様子・状態'],
+      ...masterConditions.map(c => [c])
+    ];
+    const wsMaster = XLSX.utils.aoa_to_sheet(masterData);
+    XLSX.utils.book_append_sheet(wb, wsMaster, 'マスター');
+
+    const filename = `支援記録_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, filename);
+  }
+
+  function clearAll() {
+    if (records.length === 0) {
+      alert('削除するデータがありません');
+      return;
+    }
+    if (confirm(`すべての記録（${records.length}件）を削除しますか？\nこの操作は取り消せません。`)) {
+      records = [];
+      filtered = [];
+      saveRecords();
+      renderTable();
+      alert('すべての記録を削除しました');
+    }
+  }
+
+  // 初期化
+  window.addEventListener('DOMContentLoaded', function() {
+    initSpeechRecognition();
+    loadMasterData();
+    updateFilterOptions();
+    renderTable();
+    addInputRow();
+  });
+  
+  // モーダル外クリックで閉じる
+  window.onclick = function(event) {
+    const masterModal = document.getElementById('masterModal');
+    const syncModal = document.getElementById('syncModal');
+    if (event.target == masterModal) {
+      closeMasterModal();
+    }
+    if (event.target == syncModal) {
+      closeSyncModal();
+    }
+  }
+  
+  // iOS Safariでのスクロール改善
+  document.addEventListener('touchstart', function() {}, {passive: true});
+</script>
+
+</body>
+</html>
